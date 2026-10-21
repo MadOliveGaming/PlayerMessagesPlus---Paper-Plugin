@@ -1,0 +1,17 @@
+name: 'PlayerMessagesPlus'
+version: '${version}'
+main: com.madolivegaming.playermessagesplus.PlayerMessagesPlus
+api-version: '26.3'
+author: MadOliveGaming
+description: Customizable join, leave, and reconnect messages with personal messages and MiniMessage controls.
+commands:
+  pmp:
+    description: Configure PlayerMessages+ messages and settings.
+    usage: /pmp help
+    permission-message: 'You do not have permission to use this command.'
+
+  pmpadmin:
+    description: Admin commands for PlayerMessages+.
+    usage: /pmpadmin help
+    permission: playermessagesplus.admin
+    permission-message: 'You do not have permission to use this command.'

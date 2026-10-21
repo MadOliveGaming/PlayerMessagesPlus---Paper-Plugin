@@ -1,0 +1,10 @@
+{
+  "_comment": [
+    "Messages support MiniMessage colors, decorations, gradients, rainbow, and the <player> placeholder.",
+    "Unknown tags and interactive tags such as click/hover are not supported."
+  ],
+  "messages": [
+    "<green><player> joined the game",
+    "<gradient:#5e4fa2:#f79459>Welcome back, <player>!</gradient>"
+  ]
+}

@@ -1,0 +1,17 @@
+useCustomJoinMessages: true
+usePersonalJoinMessages: true
+useCustomLeaveMessages: true
+usePersonalLeaveMessages: true
+useCustomRejoinMessages: true
+usePersonalRejoinMessages: true
+rejoinMessageWindow: 30
+suppressLeaveMessageDuringRejoin: 0
+minimessageTags:
+  colors: true
+  bold: true
+  italic: true
+  underlined: true
+  strikethrough: true
+  obfuscated: true
+  gradient: true
+  rainbow: true

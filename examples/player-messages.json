@@ -1,0 +1,7 @@
+{
+  "_comment": [
+    "Personal messages are keyed by player UUID under players.",
+    "Each message is optional. Personal messages are limited to 256 characters."
+  ],
+  "players": {}
+}
