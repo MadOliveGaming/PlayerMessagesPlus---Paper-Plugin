@@ -2,6 +2,8 @@
 
 Paper plugin for Minecraft Java 26.3. This plugin supports custom join- leave- and rejoin (more on that later) messages for players in 2 forms. The first is a list of messages set by the server admins in a json file (seperate file for each message type with minimessage formatting support), from which a random message is picked if these are enabled. The seconds is personal messages, which each player can set through a command ingame for themselves (also with minimessage support, for both forms we added the <player> tag which will be replaced by the players name). This can also be disabled by server admins. If both are enabled (personal and custom messages, with custom reffering to the json lists), the personal message takes priority. If neither are enabled for that message type, a vanilla (style) message will be displayed. 
 
+The plugin also has integration with DiscordSRV as described below. This is optional, so your server does not NEED DiscordSRV to use this plugin.
+
 ## Player features:
 
 The features available to non-opped players consist of: Setting- resetting- and checking their own personal messages.
@@ -18,7 +20,7 @@ Admin features are currently locked behind operator permissions, which I might c
 
 To completely silence leave and join messages when players rejoin within the join window, simply disable both useCustomRejoinMessages and usePersonalRejoinMessages. In this instance the game will ignore the suppressLeaveMessageDuringRejoin setting and only send a leave message after the rejoin window has expired.
 
-The following commands are available for them:
+The following commands are available for them (integration related commands are specified in their related sections below):
 - `/pmpadmin help`: Show a list of all admin commands.
 - `/pmpadmin settings`: Shows all the current server settings, excluding MiniMessage tag statusses.
 - `/pmpadmin verify`: Checks if the message json files, bans json file and config.yaml file are valid and/or contain invalid entries and informs you of issues.
@@ -35,6 +37,23 @@ The following commands are available for them:
 - `/pmpadmin rejoinMessageWindow <seconds>`: Set for how long after a disconnect the next join counts as "rejoining".
 - `/pmpadmin suppressLeaveMessageDuringRejoin <seconds>`: Set for how long leave messages will be held back whilst the server waits to see if the next join becomnes a "rejoin". When set to 0 the leave message is send immediately as usual.
 - `/pmpadmin minimessageTags <category> <true\|false>`: Enable or disable a MiniMesssage formatting tag for personal messages (does not affect messages from the server's custom json list). Available categories: colors, bold, italic, underlined, strikethrough, obfuscated, gradient, rainbow. Disabling colours will also stop tags like rainbow and gradient from applying their colour values.
+
+## DiscordSRV Integration:
+
+DiscordSRV integration is disabled by default and cannot be enabled unless the plugin detects DiscordSRV in your plugins folder. You can [find DiscordSRV on this Modrith page](https://modrinth.com/plugin/discordsrv)!
+
+PlayerMessages+ supports DiscordSRV integration, which  establishes the following: The ability to show the custom and personal join-, rejoin- and leave messages instead of the default DiscordSRV messages and in fact to send rejoin messages at all (which discordSRV will not do if this integration is disabled). It is also what allows PlayerMessages+ to control when DiscordSRV does and doesn't send join- leave or rejoin messages, which is needed for the cases where we permanently or temporaraly supress leave and join messages whilst waiting for rejoins.
+
+Due to the way the messages are send to discord, MiniMessage tags cannot be used there. Therefore any custom and personal messages send to discord will be stripped of all MiniMessage tags, retaining only the text. The <player> tag will be replaced by the player's minecraft name before tags are stripped, so is the only tag that "works" when send to discord.
+
+The following commands are available for server admins to control this integration:
+- `/pmpadmin integration DiscordSrv help`: Shows a list of all admin commands related to DiscordSRV integration.
+- `/pmpadmin integration DiscordSrv settings`: Shows all the current DiscordSRV integration settings and if the plugin was able to find DiscordSRV on your server.
+- `/pmpadmin integration DiscordSrv enabled <true|false>`: Enable or disable DiscordSRV integration. The command will refuse to enable if no instance of DiscordSRV could be found.
+- `/pmpadmin integration DiscordSrv useCustomMessages <true|false>`: Enable or disable wether DiscordSRV uses the exact content of custom and personal messages in discord. If disabled a default message will be send instead which is identical to what DiscordSRV would send without this integration.
+
+**Important:** If you enable this integration it is highly reccomended you disable join- firstjoin- and leave messages in DiscordSRV's messages.yaml. Failing to do so may result in multiple messages being send per join or leave! So either disable those and let PlayerMessages+ handle when to send the messages, or choose not to use the integration at all and let DiscordSRV do its default thing (meaning what minecraft chat and discord chat sees might differ).
+
 
 ## Default settings
 
@@ -58,6 +77,10 @@ minimessageTags:
   - obfuscated: true
   - gradient: true
   - rainbow: true
+
+DiscordSRV integration:
+  - enabled: false
+  - useCustomMessages: true
 
 ## Build
 
