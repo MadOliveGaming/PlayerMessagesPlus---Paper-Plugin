@@ -22,10 +22,13 @@ public final class ReconnectListener implements Listener {
         final long disconnectedAt;
         final long windowMillis;
         final Component leaveMessage;
+        final String playerName;
+        final UUID playerUuid;
+        final String leaveSourceText;
         boolean leaveSent;
         BukkitTask leaveTask;
         BukkitTask expiryTask;
-        DisconnectState(long at, long windowMillis, Component msg) { disconnectedAt = at; this.windowMillis = windowMillis; leaveMessage = msg; }
+        DisconnectState(long at, long windowMillis, Component msg, String playerName, UUID playerUuid, String leaveSourceText) { disconnectedAt = at; this.windowMillis = windowMillis; leaveMessage = msg; this.playerName = playerName; this.playerUuid = playerUuid; this.leaveSourceText = leaveSourceText; }
         void cancel() { if (leaveTask != null) leaveTask.cancel(); if (expiryTask != null) expiryTask.cancel(); }
     }
 
@@ -35,16 +38,17 @@ public final class ReconnectListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         PluginSettings s = plugin.settings().get();
-        Component selected = plugin.messages().customOrPersonal("leave", player);
+        MessageService.Selection selected = plugin.messages().select("leave", player);
         Component vanilla = event.quitMessage();
-        Component outgoing = selected != null ? selected : vanilla;
+        Component outgoing = selected != null ? selected.component() : vanilla;
+        String sourceText = selected == null ? null : selected.sourceText();
         event.quitMessage(null);
 
         DisconnectState old = pending.remove(player.getUniqueId());
         if (old != null) old.cancel();
         long now = System.currentTimeMillis();
         int window = s.rejoinMessageWindow;
-        DisconnectState state = new DisconnectState(now, window * 1000L, outgoing);
+        DisconnectState state = new DisconnectState(now, window * 1000L, outgoing, player.getName(), player.getUniqueId(), sourceText);
         pending.put(player.getUniqueId(), state);
 
 
@@ -66,8 +70,19 @@ public final class ReconnectListener implements Listener {
                 if (!state.leaveSent) sendLeave(state);
                 state.cancel(); pending.remove(player.getUniqueId());
             }
-            Component selected = plugin.messages().customOrPersonal("join", player);
-            if (selected != null) { event.joinMessage(null); plugin.messages().broadcast(selected); }
+            MessageService.Selection selected = plugin.messages().select("join", player);
+            if (selected != null) {
+                event.joinMessage(null);
+                plugin.messages().broadcast(selected.component(), "join", player.getName(), player.getUniqueId(), selected.sourceText());
+            } else {
+                // The vanilla join message remains assigned to the event, so do not
+                // broadcast it ourselves. Forward it only to DiscordSRV, provided
+                // Minecraft will actually display a join message.
+                Component vanillaJoin = event.joinMessage();
+                if (vanillaJoin != null && plugin.discordSrv() != null) {
+                    plugin.discordSrv().send("join", player.getName(), player.getUniqueId(), vanillaJoin, null);
+                }
+            }
             return;
         }
 
@@ -75,16 +90,18 @@ public final class ReconnectListener implements Listener {
         state.cancel(); pending.remove(player.getUniqueId());
         PluginSettings s = plugin.settings().get();
         if (!s.anyRejoinMessageEnabled()) return; // silent reconnect mode
-        Component rejoin = plugin.messages().customOrPersonal("rejoin", player);
-        if (rejoin == null) rejoin = Component.text(player.getName() + " rejoined the game", NamedTextColor.YELLOW);
-        plugin.messages().broadcast(rejoin);
+        MessageService.Selection selected = plugin.messages().select("rejoin", player);
+        Component rejoin = selected == null ? Component.text(player.getName() + " rejoined the game", NamedTextColor.YELLOW) : selected.component();
+        plugin.messages().broadcast(rejoin, "rejoin", player.getName(), player.getUniqueId(), selected == null ? null : selected.sourceText());
     }
 
     private void notifyOperatorOnJoin(Player player) {
-        if (!player.isOp() || plugin.cachedIssueCount() <= 0) return;
-        ChatMessages.send(player, "[PlayerMessages+] " + plugin.cachedIssueCount()
-                + " issues were found in " + plugin.cachedIssueFileCount()
-                + " JSON files. Use /pmpadmin verify for details.");
+        if (player.isOp() && plugin.cachedIssueCount() > 0) {
+            ChatMessages.send(player, "[PlayerMessages+] " + plugin.cachedIssueCount()
+                    + " issues were found in " + plugin.cachedIssueFileCount()
+                    + " JSON files. Use /pmpadmin verify for details.");
+        }
+        if (plugin.discordSrv() != null) plugin.discordSrv().warnAdminOnJoin(player);
     }
 
     private void sendLeaveIfCurrent(UUID uuid, DisconnectState state) {
@@ -93,7 +110,7 @@ public final class ReconnectListener implements Listener {
     private void sendLeave(DisconnectState state) {
         if (state.leaveSent) return;
         state.leaveSent = true;
-        plugin.messages().broadcast(state.leaveMessage);
+        plugin.messages().broadcast(state.leaveMessage, "leave", state.playerName, state.playerUuid, state.leaveSourceText);
     }
     private void expire(UUID uuid, DisconnectState state) {
         if (pending.get(uuid) != state) return;

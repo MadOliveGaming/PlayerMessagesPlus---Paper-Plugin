@@ -9,6 +9,7 @@ public final class PlayerMessagesPlus extends JavaPlugin {
     private SettingsManager settings;
     private JsonDataStore data;
     private MessageService messages;
+    private DiscordSrvIntegration discordSrv;
     private ReconnectListener reconnectListener;
     private int cachedIssueCount;
     private int cachedIssueFileCount;
@@ -22,6 +23,8 @@ public final class PlayerMessagesPlus extends JavaPlugin {
         data.initializeFiles();
         data.loadAll(false);
         messages = new MessageService(this);
+        discordSrv = new DiscordSrvIntegration(this);
+        discordSrv.initialize();
         reconnectListener = new ReconnectListener(this);
         getServer().getPluginManager().registerEvents(reconnectListener, this);
         PluginCommand command = getCommand("pmp");
@@ -52,6 +55,7 @@ public final class PlayerMessagesPlus extends JavaPlugin {
     public SettingsManager settings() { return settings; }
     public JsonDataStore data() { return data; }
     public MessageService messages() { return messages; }
+    public DiscordSrvIntegration discordSrv() { return discordSrv; }
     public int cachedIssueCount() { return cachedIssueCount; }
     public int cachedIssueFileCount() { return cachedIssueFileCount; }
     public void setIssueCache(int count, int files) { cachedIssueCount = count; cachedIssueFileCount = files; }

@@ -117,6 +117,11 @@ public final class MiniMessageService {
         catch (Exception e) { return Component.text(prepared.replace("<player>", playerName)); }
     }
 
+    public static String prepareForDiscord(String input, String playerName, PluginSettings settings, boolean personal) {
+        String prepared = personal ? stripDisabledFormatting(input, settings) : input;
+        return prepared.replaceAll("(?i)<player>", Matcher.quoteReplacement(playerName));
+    }
+
     private static String stripDisabledFormatting(String input, PluginSettings s) {
         Matcher m = TAG.matcher(input); StringBuffer out = new StringBuffer();
         while (m.find()) {

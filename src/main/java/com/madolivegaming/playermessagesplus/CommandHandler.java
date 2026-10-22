@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 public final class CommandHandler implements CommandExecutor, TabCompleter {
     private final PlayerMessagesPlus plugin;
     private static final Map<String, String> TYPES = Map.of("joinmessage", "join", "leavemessage", "leave", "rejoinmessage", "rejoin");
-    private static final Set<String> ADMIN_TOP = Set.of("usecustomjoinmessages", "usepersonaljoinmessages", "usecustomleavemessages", "usepersonalleavemessages", "usecustomrejoinmessages", "usepersonalrejoinmessages", "rejoinmessagewindow", "suppressleavemessageduringrejoin", "minimessagetags", "settings", "reload", "verify", "ban", "unban", "banlist");
+    private static final Set<String> ADMIN_TOP = Set.of("usecustomjoinmessages", "usepersonaljoinmessages", "usecustomleavemessages", "usepersonalleavemessages", "usecustomrejoinmessages", "usepersonalrejoinmessages", "rejoinmessagewindow", "suppressleavemessageduringrejoin", "minimessagetags", "settings", "integrations", "reload", "verify", "ban", "unban", "banlist", "integration");
 
     public CommandHandler(PlayerMessagesPlus plugin) { this.plugin = plugin; }
 
@@ -29,7 +29,9 @@ public final class CommandHandler implements CommandExecutor, TabCompleter {
         if (!adminRoot) { ChatMessages.send(sender, "[PlayerMessages+] Unknown command. Use /pmp help."); return true; }
         if (!plugin.isAdmin(sender)) { ChatMessages.send(sender, "[PlayerMessages+] You do not have permission to use this command."); return true; }
         switch (top) {
+            case "integration" -> handleIntegration(sender, args);
             case "settings" -> settings(sender);
+            case "integrations" -> integrations(sender);
             case "reload" -> reload(sender);
             case "verify" -> verify(sender);
             case "usecustomjoinmessages", "usepersonaljoinmessages", "usecustomleavemessages", "usepersonalleavemessages", "usecustomrejoinmessages", "usepersonalrejoinmessages" -> setBoolean(sender, top, args);
@@ -128,6 +130,35 @@ public final class CommandHandler implements CommandExecutor, TabCompleter {
         return switch (type) { case "join" -> s.usePersonalJoinMessages; case "leave" -> s.usePersonalLeaveMessages; default -> s.usePersonalRejoinMessages; };
     }
 
+    private void handleIntegration(CommandSender sender, String[] args) {
+        if (args.length < 3 || !args[1].equalsIgnoreCase("DiscordSrv")) {
+            ChatMessages.send(sender, "[PlayerMessages+] Usage: /pmpadmin integration DiscordSrv <help|settings|enabled|useCustomMessages> [true|false]");
+            return;
+        }
+        if (args[2].equalsIgnoreCase("help") && args.length == 3) {
+            integrationHelp(sender);
+            return;
+        }
+        if (args[2].equalsIgnoreCase("settings") && args.length == 3) {
+            integrations(sender);
+            return;
+        }
+        if (args.length != 4) {
+            ChatMessages.send(sender, "[PlayerMessages+] Usage: /pmpadmin integration DiscordSrv <enabled|useCustomMessages> <true|false>");
+            return;
+        }
+        if (!isBoolean(args[3])) {
+            ChatMessages.send(sender, "[PlayerMessages+] The integration setting must be true or false.");
+            return;
+        }
+        boolean value = Boolean.parseBoolean(args[3]);
+        switch (args[2].toLowerCase(Locale.ROOT)) {
+            case "enabled" -> plugin.discordSrv().setEnabled(value, sender);
+            case "usecustommessages" -> plugin.discordSrv().setUseCustomMessages(value, sender);
+            default -> ChatMessages.send(sender, "[PlayerMessages+] Unknown DiscordSRV setting. Use enabled, useCustomMessages, or settings.");
+        }
+    }
+
     private void setBoolean(CommandSender sender, String key, String[] args) {
         if (args.length != 2 || !isBoolean(args[1])) { ChatMessages.send(sender, "[PlayerMessages+] Usage: /pmpadmin " + key + " <true|false>"); return; }
         PluginSettings old = plugin.settings().get(); PluginSettings next = old.copy(); boolean value = Boolean.parseBoolean(args[1]);
@@ -178,12 +209,15 @@ public final class CommandHandler implements CommandExecutor, TabCompleter {
         boolean configOk = plugin.settings().load(false);
         plugin.data().loadAll(true);
         plugin.data().refreshIssueCache();
+        plugin.discordSrv().load();
+        plugin.discordSrv().recheck(sender, false);
         ChatMessages.send(sender, "[PlayerMessages+] Reload completed. JSON data was checked and valid files were reloaded.");
         if (!configOk) ChatMessages.send(sender, "[PlayerMessages+] config.yml was invalid; the previous active configuration was retained. See console for details.");
         if (plugin.cachedIssueCount() > 0) ChatMessages.send(sender, "[PlayerMessages+] " + plugin.cachedIssueCount() + " issues were found in " + plugin.cachedIssueFileCount() + " JSON files. Use /pmpadmin verify for details.");
     }
 
     private void verify(CommandSender sender) {
+        plugin.discordSrv().recheck(sender, false);
         List<String> lines = plugin.data().describeValidation();
         for (String line : lines) ChatMessages.send(sender, line);
         ChatMessages.send(sender, "[PlayerMessages+] Issue cache updated.");
@@ -201,6 +235,24 @@ public final class CommandHandler implements CommandExecutor, TabCompleter {
         settingLine(sender, "usePersonalRejoinMessages", Boolean.toString(s.usePersonalRejoinMessages));
         settingLine(sender, "rejoinMessageWindow", s.rejoinMessageWindow + " seconds");
         settingLine(sender, "suppressLeaveMessageDuringRejoin", s.suppressLeaveMessageDuringRejoin + " seconds");
+    }
+
+    private void integrationHelp(CommandSender sender) {
+        sender.sendMessage(Component.text("[PlayerMessages+]", NamedTextColor.DARK_AQUA).append(Component.text(" DiscordSRV integration commands:", NamedTextColor.AQUA)));
+        ChatMessages.send(sender, "/pmpadmin integration DiscordSrv help");
+        ChatMessages.send(sender, "/pmpadmin integration DiscordSrv settings");
+        ChatMessages.send(sender, "/pmpadmin integration DiscordSrv enabled <true|false>");
+        ChatMessages.send(sender, "/pmpadmin integration DiscordSrv useCustomMessages <true|false>");
+    }
+
+    private void integrations(CommandSender sender) {
+        DiscordSrvIntegration integration = plugin.discordSrv();
+        sender.sendMessage(Component.text("[PlayerMessages+] DiscordSRV Inttegration Setting:", NamedTextColor.AQUA));
+        settingLine(sender, "Enabled", Boolean.toString(integration.enabledInSettings()));
+        settingLine(sender, "UseCustomMessages", Boolean.toString(integration.useCustomMessages()));
+        String status = !integration.enabledInSettings() ? "disabled"
+                : integration.isAvailable() ? "available" : "unavailable";
+        settingLine(sender, "RuntimeStatus", status);
     }
 
     private void settingLine(CommandSender sender, String name, String value) {
@@ -264,6 +316,9 @@ public final class CommandHandler implements CommandExecutor, TabCompleter {
 
     @Override public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         boolean adminRoot = command.getName().equalsIgnoreCase("pmpadmin");
+        if (adminRoot && plugin.isAdmin(sender) && args.length == 2 && args[0].equalsIgnoreCase("integration")) return prefix(List.of("DiscordSrv"), args[1]);
+        if (adminRoot && plugin.isAdmin(sender) && args.length == 3 && args[0].equalsIgnoreCase("integration") && args[1].equalsIgnoreCase("DiscordSrv")) return prefix(List.of("help", "settings", "enabled", "useCustomMessages"), args[2]);
+        if (adminRoot && plugin.isAdmin(sender) && args.length == 4 && args[0].equalsIgnoreCase("integration") && args[1].equalsIgnoreCase("DiscordSrv") && List.of("enabled", "usecustommessages").contains(args[2].toLowerCase(Locale.ROOT))) return prefix(List.of("true", "false"), args[3]);
         if (args.length == 1) {
             List<String> roots = new ArrayList<>(adminRoot ? List.of("help", "set", "see", "reset") : List.of("help", "set", "see", "reset"));
             if (adminRoot && plugin.isAdmin(sender)) roots.addAll(ADMIN_TOP);

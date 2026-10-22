@@ -2,6 +2,7 @@ name: 'PlayerMessagesPlus'
 version: '${version}'
 main: com.madolivegaming.playermessagesplus.PlayerMessagesPlus
 api-version: '26.3'
+softdepend: [DiscordSRV]
 author: MadOliveGaming
 description: Customizable join, leave, and reconnect messages with personal messages and MiniMessage controls.
 commands:
