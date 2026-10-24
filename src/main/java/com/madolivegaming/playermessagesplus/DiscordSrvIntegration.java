@@ -255,7 +255,7 @@ public final class DiscordSrvIntegration {
         // that expose the standard JDA package.
         Class<?> embedBuilderClass = loadJdaClass(loader, "EmbedBuilder");
         Object builder = embedBuilderClass.getConstructor().newInstance();
-        String avatar = uuid == null ? "https://mc-heads.net/avatar/Steve/64" : "https://mc-heads.net/avatar/" + uuid + "/64";
+        String avatar = uuid == null ? "https://heads.discordsrv.com/steve/head/64" : "https://heads.discordsrv.com/" + uuid + "/overlay/64";
         // Keep the message in the embed author line for a compact appearance.
         // MiniMessage formatting tags have already been stripped to plain text.
         invokeAuthorMethod(embedBuilderClass, builder, content, avatar);
